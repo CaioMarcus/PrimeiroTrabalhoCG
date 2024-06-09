@@ -64,7 +64,8 @@
               const crossProductBCPoint = (vecBC.x * vecBPoint.y) - (vecBC.y * vecBPoint.x);
               const crossProductCAPoint = (vecCA.x * vecCPoint.y) - (vecCA.y * vecCPoint.x);
               
-              return crossProductABPoint < 0 == crossProductBCPoint < 0 == crossProductCAPoint > 0;
+              
+              return ((crossProductABPoint > 0) == (crossProductBCPoint > 0) == (crossProductCAPoint > 0));
           }
 
           v1IsConvex(v0, v1, v2){
@@ -86,7 +87,6 @@
             // Checking if triange is an ear
             for (let j = v1Index + 2; j < this.pointList.size; j++){
               if (this.pointIsInsideTriangle(triangle, this.pointList.list[j])){
-                console.log(triangle)
                 return false;
               }
             }
