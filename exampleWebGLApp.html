@@ -57,7 +57,7 @@
           super();
           this.program = null;
           this.model = null;
-
+          this.angleInDeg = 0;
       }
 
       create(){
@@ -144,8 +144,8 @@
 
 
       draw() {
-
-        const angle = (10.0*Math.PI)/180.0;
+        this.angleInDeg += 1;
+        const angle = (angleInDeg * Math.PI)/180.0;
         const tx = 0.0;
         const ty = 0.0;
         const identMatrix4 = [1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0];
@@ -174,6 +174,8 @@
         this.bsplineModel[0].draw();
         this.bsplineModel[1].draw();
         this.bsplineModel[2].draw();
+
+        requestAnimationFrame(() => this.draw());
       } 
 
 
