@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Solar System with WebGL and Phong Illumination</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="webgl-canvas" width="800" height="800">
+    Your browser does not support the HTML5 canvas element.
+  </canvas>
+
+  <script type="text/javascript" src="./lib/gl-matrix.js"></script>
+  <script type="text/javascript" src="./webGLApp.js"></script>
+  <script type="text/javascript" src="./webGLModel.js"></script>
+  <script type="text/javascript" src="./shapes.js"></script>
+  <script type="text/javascript" src="./shapesWebGL.js"></script>
+  <script type="text/javascript" src="./utils.js"></script>
+  
+  <!-- Vertex Shader -->
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    #version 300 es
+    precision mediump float;
+
+    in vec3 aVertexPosition;
+    in vec3 aVertexColor;
+    in vec3 aVertexNormal;
+    in vec2 aTextureCoordinate;
+
+    uniform mat4 uModelViewMatrix;
+    uniform mat4 uNormalMatrix;
+    uniform mat4 uProjectionMatrix;
+    uniform vec3 uLightPosition;
+    uniform vec3 uEyePosition;
+
+    out vec3 vNormal;
+    out vec3 vLightDir;
+    out vec3 vViewDir;
+    out vec4 vColor;
+    out vec2 vTextureCoord;
+
+    void main(void) {
+      vec4 vertexPosition = uModelViewMatrix * vec4(aVertexPosition, 1.0);
+      gl_Position = uProjectionMatrix * vertexPosition;
+
+      vNormal = mat3(uNormalMatrix) * aVertexNormal;
+      vLightDir = normalize(uLightPosition - vertexPosition.xyz);
+      vViewDir = normalize(uEyePosition - vertexPosition.xyz);
+      
+      vColor = vec4(aVertexColor, 1.0);
+      vTextureCoord = aTextureCoordinate;
+    }
+  </script>
+
+  <!-- Fragment Shader -->
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    #version 300 es
+    precision mediump float;
+
+    in vec3 vNormal;
+    in vec3 vLightDir;
+    in vec3 vViewDir;
+    in vec4 vColor;
+    in vec2 vTextureCoord;
+
+    uniform sampler2D uSampler;
+    uniform int uTextureActive;
+
+    out vec4 fragColor;
+
+    void main(void) {
+      vec3 normal = normalize(vNormal);
+      vec3 lightDir = normalize(vLightDir);
+      vec3 viewDir = normalize(vViewDir);
+      
+      float ambientStrength = 0.3;
+      vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
+
+      float diffuseStrength = max(dot(normal, lightDir), 0.0);
+      vec3 diffuse = diffuseStrength * vColor.rgb;
+
+      float specularStrength = 0.5;
+      vec3 reflectDir = reflect(-lightDir, normal);
+      float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+      vec3 specular = specularStrength * spec * vec3(1.0, 1.0, 1.0);
+
+      vec3 lighting = ambient + diffuse + specular;
+
+      if (uTextureActive == 1) {
+        fragColor = texture(uSampler, vTextureCoord) * vec4(lighting, 1.0);
+      } else {
+        fragColor = vec4(lighting, 1.0);
+      }
+    }
+  </script>
+
+  <script type="text/javascript">
+    class SolarSystemApp extends WebGLApp {
+      constructor() {
+        super();
+        this.sunRadius = 5.0;
+        this.planetDistances = [15.0, 25.0, 35.0]; // Distances from the sun
+        this.planetSizes = [1.0, 0.7, 0.5]; // Relative sizes to the sun
+        this.planetColors = [
+          [1.0, 0.0, 0.0], // Red
+          [0.0, 1.0, 0.0], // Green
+          [0.0, 0.0, 1.0]  // Blue
+        ];
+        this.lightPosition = [0.0, 0.0, 0.0]; // Position of the light source (sun)
+        this.eyePosition = [0.0, 0.0, 50.0]; // Initial eye position
+        this.rotationSpeeds = [0.5, 0.3, 0.2]; // Rotation speeds of planets
+        this.rotationAngles = [0.0, 0.0, 0.0]; // Initial rotation angles of planets
+        this.stack = new SimpleGLStack();
+      }
+
+      async create() {
+        this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        this.gl.enable(this.gl.DEPTH_TEST);
+
+        this.program = await this.loadProgram("vertex-shader", "fragment-shader");
+
+        // Setup shaders
+        this.attribShaderVariables = {
+          "aVertexPosition": "aVertexPosition",
+          "aVertexColor": "aVertexColor",
+          "aVertexNormal": "aVertexNormal",
+          "aTextureCoordinate": "aTextureCoordinate"
+        };
+
+        this.uniformShaderVariables = [
+          "uModelViewMatrix", "uNormalMatrix", "uProjectionMatrix",
+          "uLightPosition", "uEyePosition", "uSampler", "uTextureActive"
+        ];
+
+        this.setProgramAttribShaderVariablesLocation(this.program, this.attribShaderVariables);
+        this.setProgramUniformShaderVariablesLocation(this.program, this.uniformShaderVariables);
+
+        this.createModels();
+        this.initControls();
+        this.draw();
+      }
+
+      createModels() {
+        // Create sun
+        this.sun = new WebGLSphere(this.gl, this.program, this.sunRadius, 64, 64, new Color(1.0, 1.0, 0.0, 1.0));
+        this.sunModel = this.sun.getWebGLModel();
+
+        // Create planets
+        this.planets = [];
+        for (let i = 0; i < this.planetDistances.length; i++) {
+          const planetSize = this.sunRadius * this.planetSizes[i];
+          const planetColor = new Color(...this.planetColors[i], 1.0);
+          const planet = new WebGLSphere(this.gl, this.program, planetSize, 32, 32, planetColor);
+          this.planets.push({ model: planet.getWebGLModel(), distance: this.planetDistances[i], size: planetSize });
+        }
+      }
+
+      drawScene(modelViewMatrix) {
+        // Draw sun
+        this.updateModelViewMatrix(this.program, modelViewMatrix, "uModelViewMatrix");
+        this.updateNormalMatrix(this.program, modelViewMatrix, "uNormalMatrix");
+        this.sunModel.draw();
+
+        // Draw planets
+        for (let i = 0; i < this.planets.length; i++) {
+          this.stack.push(mat4.clone(modelViewMatrix));
+          mat4.rotateY(modelViewMatrix, modelViewMatrix, this.rotationAngles[i] * Math.PI / 180);
+          mat4.translate(modelViewMatrix, modelViewMatrix, [this.planets[i].distance, 0.0, 0.0]);
+          mat4.scale(modelViewMatrix, modelViewMatrix, [this.planets[i].size, this.planets[i].size, this.planets[i].size]);
+
+          this.updateModelViewMatrix(this.program, modelViewMatrix, "uModelViewMatrix");
+          this.updateNormalMatrix(this.program, modelViewMatrix, "uNormalMatrix");
+          this.planets[i].model.draw();
+
+          modelViewMatrix = this.stack.pop();
+        }
+      }
+
+      draw() {
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+
+        const modelViewMatrix = mat4.create();
+        mat4.lookAt(modelViewMatrix, this.eyePosition, [0, 0, 0], [0, 1, 0]);
+
+        this.drawScene(modelViewMatrix);
+
+        requestAnimationFrame(() => this.draw());
+      }
+
+      initControls() {
+        // Placeholder for controls setup if needed
+      }
+
+      init() {
+        let canvas = document.getElementById("webgl-canvas");
+        this.gl = canvas.getContext("webgl2");
+
+        if (!this.gl) {
+          console.error("WebGL2 not supported");
+          return;
+        }
+
+        super.init();
+      }
+    }
+
+    // Create and initialize the app
+    let solarSystemApp = new SolarSystemApp();
+    solarSystemApp.create();
+
+  </script>
+
+</body>
+</html>
