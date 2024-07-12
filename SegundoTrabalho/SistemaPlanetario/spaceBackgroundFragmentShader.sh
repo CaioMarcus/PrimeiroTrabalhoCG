@@ -21,7 +21,7 @@ void main(void) {
     }
 
     vec3 Ia; // Iluminação ambiental
-    float Ka = 2.0;
+    float Ka = 1.0;
 
     // Cálculo da componente ambiental
     Ia = Ka * vec3(1.0, 1.0, 1.0);

@@ -26,10 +26,11 @@
 
 
   <script type="text/javascript">
-  
-    class Star extends Sphere{
+    
+    class SpaceBackground extends Sphere{
         constructor(radius,div_u,div_v,color,textureName){
             super(radius,div_u,div_v,color,textureName)
+            this.invertNormals();
         }
 
         invertNormals() {
@@ -37,7 +38,33 @@
               this.normals[i] = this.normals[i] * -1;
           }
         }
+    }
 
+    class WebGLSpaceBackground extends SpaceBackground{
+        constructor (gl,program,radius,div_u,div_v,color,textureName,filled = false, interpolation = false){
+        super(radius,div_u,div_v,color,textureName);
+        this.gl = gl;
+        this.program = program;
+        this.textureName = textureName;
+        this.filled = filled;
+        this.interpolation = interpolation;
+        }
+
+        getWebGLModel(attribShaderVariables = null,uniformShaderVariables = null){
+                
+            const webGLCubeModel = new WebGLModel(this.gl,this .program,3,this.gl.TRIANGLES,
+                                                this.coords,this.indicesTriangles,this.colors,this.normals,null,this.textureCoords,this.textureName);
+
+            webGLCubeModel.set(attribShaderVariables,uniformShaderVariables);
+
+            return webGLCubeModel;
+        }
+    }
+
+    class Star extends Sphere{
+        constructor(radius,div_u,div_v,color,textureName){
+            super(radius,div_u,div_v,color,textureName)
+        }
     }
 
     class WebGLStar extends Star{
@@ -117,17 +144,17 @@
             this.sun = new WebGLStar(this.gl,this.sunProgram,7.0,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/sun_texture.jpg");
             this.sunModel = this.sun.getWebGLModel();
 
-            this.firstPlanet = new WebGLPlanet(this.gl,this.program,3,30,1.0,32,32,new Color(0.0,1.0,0.0,1.0),"Textures/planet_1_texture.jpg");
+            this.firstPlanet = new WebGLPlanet(this.gl,this.program,3,15,1.0,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/planet_1_texture.jpg");
             this.firstPlanetModel = this.firstPlanet.getWebGLModel();
 
-            this.secondPlanet = new WebGLPlanet(this.gl,this.program,3,30,1.0,32,32,new Color(0.0,1.0,0.0,1.0),"Textures/planet_2_texture.jpg");
-            this.secondPlanetModel = this.firstPlanet.getWebGLModel();
+            this.secondPlanet = new WebGLPlanet(this.gl,this.program,2,30,1.0,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/planet_2_texture.jpg");
+            this.secondPlanetModel = this.secondPlanet.getWebGLModel();
 
-            this.thirdPlanet = new WebGLPlanet(this.gl,this.program,3,30,1.0,32,32,new Color(0.0,1.0,0.0,1.0),"Textures/planet_2_texture.jpg");
-            this.thirdPlanetModel = this.firstPlanet.getWebGLModel();
+            this.thirdPlanet = new WebGLPlanet(this.gl,this.program,7,60,1.0,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/planet_2_texture.jpg");
+            this.thirdPlanetModel = this.thirdPlanet.getWebGLModel();
 
-            this.fourthPlanet = new WebGLPlanet(this.gl,this.program,3,30,1.0,32,32,new Color(0.0,1.0,0.0,1.0),"leather05 diffuse 1k.png");
-            this.fourthPlanetModel = this.firstPlanet.getWebGLModel();
+            this.spaceBackground = new WebGLSpaceBackground(this.gl,this.spaceBackgroundProgram,300,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/milk_way.jpg");
+            this.spaceBackgroundModel = this.spaceBackground.getWebGLModel();
         }
 
         async create(){
@@ -136,6 +163,7 @@
             //this.program = this.createProgram("vertex-shader","fragment-shader");
             this.program = await this.loadProgram("vertexShader.sh","fragmentShader.sh");
             this.sunProgram = await this.loadProgram("sunVertexShader.sh","sunFragmentShader.sh");
+            this.spaceBackgroundProgram = await this.loadProgram("spaceBackgroundVertexShader.sh","spaceBackgroundFragmentShader.sh");
             
             this.gl.useProgram(this.program);
 
@@ -155,6 +183,9 @@
             this.setProgramAttribShaderVariablesLocation(this.sunProgram,this.attribShaderVariables);
             this.setProgramUniformShaderVariablesLocation(this.sunProgram,this.uniformShaderVariables);
 
+            this.setProgramAttribShaderVariablesLocation(this.spaceBackgroundProgram,this.attribShaderVariables);
+            this.setProgramUniformShaderVariablesLocation(this.spaceBackgroundProgram,this.uniformShaderVariables);
+
             this.createTransformMatrices();
             
             this.createModels();
@@ -172,71 +203,129 @@
 
             this.setProgramUniformShaderVariablesValues(this.program,uniformShaderVariablesValues);
             this.setProgramUniformShaderVariablesValues(this.sunProgram,uniformShaderVariablesValues);
+            this.setProgramUniformShaderVariablesValues(this.spaceBackgroundProgram,uniformShaderVariablesValues);
         }
+
+        // DrawScene Debug
+        // drawScene(modelViewMatrix, deltaTime){
+        //     var tv = vec3.create();
+        //     // Sun
+        //     // this.stack.push(mat4.clone(modelViewMatrix));
+        //     //     vec3.set(tv, 0.0, 0.0, 0.0); 
+        //     //     mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+        //     //     this.updateModelViewMatrix(this.sunModel.program,modelViewMatrix,"uModelViewMatrix");
+        //     //     this.sunModel.draw(modelViewMatrix);
+
+                
+
+        //     // modelViewMatrix = this.stack.pop();
+        //         // Planet
+        //         this.stack.push(mat4.clone(modelViewMatrix));
+        //           vec3.set(tv, 10.0, 0.0, 0.0); 
+        //         //   vec3.set(
+        //         //             tv, this.planet.orbitRadius * Math.cos(deltaTime * 0.0005), 
+        //         //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
+        //         //           ); 
+        //           mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+        //           this.updateModelViewMatrix(this.firstPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
+        //           this.firstPlanetModel.draw(modelViewMatrix);
+        //         modelViewMatrix = this.stack.pop();
+
+
+        //         this.stack.push(mat4.clone(modelViewMatrix));
+        //           vec3.set(tv, -10.0, 0.0, 0.0); 
+        //         //   vec3.set(
+        //         //             tv, this.planet.orbitRadius * Math.cos(deltaTime * 0.0005), 
+        //         //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
+        //         //           ); 
+        //           mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+        //           this.updateModelViewMatrix(this.secondPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
+        //           this.secondPlanetModel.draw(modelViewMatrix);
+        //         modelViewMatrix = this.stack.pop();
+
+
+        //         this.stack.push(mat4.clone(modelViewMatrix));
+        //           vec3.set(tv, 0.0, 0.0, 10.0); 
+        //         //   vec3.set(
+        //         //             tv, this.planet.orbitRadius * Math.cos(deltaTime * 0.0005), 
+        //         //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
+        //         //           ); 
+        //           mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+        //           this.updateModelViewMatrix(this.thirdPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
+        //           this.thirdPlanetModel.draw(modelViewMatrix);
+        //         modelViewMatrix = this.stack.pop();
+
+
+        //         this.stack.push(mat4.clone(modelViewMatrix));
+        //           vec3.set(tv, 0.0, 0.0, -10.0); 
+        //         //   vec3.set(
+        //         //             tv, this.planet.orbitRadius * Math.cos(deltaTime * 0.0005), 
+        //         //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
+        //         //           ); 
+        //           mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+        //           this.updateModelViewMatrix(this.fourthPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
+        //           this.fourthPlanetModel.draw(modelViewMatrix);
+        //         modelViewMatrix = this.stack.pop();
+            
+        // }
 
 
         drawScene(modelViewMatrix, deltaTime){
             var tv = vec3.create();
-            // Sun
-            // this.stack.push(mat4.clone(modelViewMatrix));
-            //     vec3.set(tv, 0.0, 0.0, 0.0); 
-            //     mat4.translate(modelViewMatrix,modelViewMatrix,tv);
-            //     this.updateModelViewMatrix(this.sunModel.program,modelViewMatrix,"uModelViewMatrix");
-            //     this.sunModel.draw(modelViewMatrix);
+            let baseOrbitSpeed = 0.1;
 
-                
+            // SpaceBakcground
+            this.stack.push(mat4.clone(modelViewMatrix));
+                vec3.set(tv, 0.0, 0.0, 0.0); 
+                mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+                this.updateModelViewMatrix(this.spaceBackgroundModel.program,modelViewMatrix,"uModelViewMatrix");
+                this.spaceBackgroundModel.draw(modelViewMatrix);
 
-            // modelViewMatrix = this.stack.pop();
-                // Planet
-                this.stack.push(mat4.clone(modelViewMatrix));
-                  vec3.set(tv, 10.0, 0.0, 0.0); 
-                //   vec3.set(
-                //             tv, this.planet.orbitRadius * Math.cos(deltaTime * 0.0005), 
-                //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
-                //           ); 
+              // Sun
+              this.stack.push(mat4.clone(modelViewMatrix));
+                  vec3.set(tv, 0.0, 0.0, 0.0); 
                   mat4.translate(modelViewMatrix,modelViewMatrix,tv);
-                  this.updateModelViewMatrix(this.firstPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
-                  this.firstPlanetModel.draw(modelViewMatrix);
-                modelViewMatrix = this.stack.pop();
+                  this.updateModelViewMatrix(this.sunModel.program,modelViewMatrix,"uModelViewMatrix");
+                  this.sunModel.draw(modelViewMatrix);
 
+                  // Planet 1
+                  this.stack.push(mat4.clone(modelViewMatrix));
+                    vec3.set(
+                              tv, this.firstPlanet.orbitRadius * Math.cos(deltaTime * baseOrbitSpeed * Math.pow(this.firstPlanet.orbitRadius, 3/2) / 100000), 
+                              0.0, this.firstPlanet.orbitRadius * Math.sin(deltaTime * baseOrbitSpeed * Math.pow(this.firstPlanet.orbitRadius, 3/2) / 100000)
+                            ); 
+                    mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+                    this.updateModelViewMatrix(this.firstPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
+                    this.firstPlanetModel.draw(modelViewMatrix);
+                  modelViewMatrix = this.stack.pop();
 
-                this.stack.push(mat4.clone(modelViewMatrix));
-                  vec3.set(tv, -10.0, 0.0, 0.0); 
-                //   vec3.set(
-                //             tv, this.planet.orbitRadius * Math.cos(deltaTime * 0.0005), 
-                //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
-                //           ); 
-                  mat4.translate(modelViewMatrix,modelViewMatrix,tv);
-                  this.updateModelViewMatrix(this.secondPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
-                  this.secondPlanetModel.draw(modelViewMatrix);
-                modelViewMatrix = this.stack.pop();
+                  // Planet 2
+                  this.stack.push(mat4.clone(modelViewMatrix));
+                    vec3.set(
+                              tv, this.secondPlanet.orbitRadius * Math.cos(deltaTime * baseOrbitSpeed * Math.pow(this.secondPlanet.orbitRadius, 3/2) / 100000), 
+                              0.0, this.secondPlanet.orbitRadius * Math.sin(deltaTime * baseOrbitSpeed * Math.pow(this.secondPlanet.orbitRadius, 3/2) / 100000)
+                            ); 
+                    mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+                    this.updateModelViewMatrix(this.secondPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
+                    this.secondPlanetModel.draw(modelViewMatrix);
+                  modelViewMatrix = this.stack.pop();
 
+                  // Planet 3
+                  this.stack.push(mat4.clone(modelViewMatrix));
+                    vec3.set(
+                              tv, this.thirdPlanet.orbitRadius * Math.cos(deltaTime * baseOrbitSpeed * Math.pow(this.thirdPlanet.orbitRadius, 3/2) / 100000), 
+                              0.0, this.thirdPlanet.orbitRadius * Math.sin(deltaTime * baseOrbitSpeed * Math.pow(this.thirdPlanet.orbitRadius, 3/2) / 100000)
+                            ); 
+                    mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+                    this.updateModelViewMatrix(this.thirdPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
+                    this.thirdPlanetModel.draw(modelViewMatrix);
+                  modelViewMatrix = this.stack.pop();
 
-                this.stack.push(mat4.clone(modelViewMatrix));
-                  vec3.set(tv, 0.0, 0.0, 10.0); 
-                //   vec3.set(
-                //             tv, this.planet.orbitRadius * Math.cos(deltaTime * 0.0005), 
-                //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
-                //           ); 
-                  mat4.translate(modelViewMatrix,modelViewMatrix,tv);
-                  this.updateModelViewMatrix(this.thirdPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
-                  this.thirdPlanetModel.draw(modelViewMatrix);
-                modelViewMatrix = this.stack.pop();
+              modelViewMatrix = this.stack.pop();
 
-
-                this.stack.push(mat4.clone(modelViewMatrix));
-                  vec3.set(tv, 0.0, 0.0, -10.0); 
-                //   vec3.set(
-                //             tv, this.planet.orbitRadius * Math.cos(deltaTime * 0.0005), 
-                //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
-                //           ); 
-                  mat4.translate(modelViewMatrix,modelViewMatrix,tv);
-                  this.updateModelViewMatrix(this.fourthPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
-                  this.fourthPlanetModel.draw(modelViewMatrix);
-                modelViewMatrix = this.stack.pop();
-            
+            modelViewMatrix = this.stack.pop();
         }
-
+        
 
         draw() {
           let startTime = 0;
@@ -371,7 +460,7 @@
 
 
         init() {
-            this.gl.clearColor(0.7, 0.7, 0.9, 1.0);
+            this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
             this.gl.enable(this.gl.DEPTH_TEST);
             super.init();
         }
