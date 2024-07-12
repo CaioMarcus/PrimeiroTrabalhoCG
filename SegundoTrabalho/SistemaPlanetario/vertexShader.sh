@@ -23,15 +23,15 @@ uniform vec3 uLightPos;
 uniform vec3 uEyePos;
 
 void main(void) {
-    mat4 normalMatrix = inverse(uModelViewMatrix);
-    normalMatrix = transpose(normalMatrix);
+    mat4 normalMatrix = transpose(inverse(uModelViewMatrix));
+    mat4 modelViewMatrixStandard = inverse(transpose(uNormalMatrix));
 
     vec4 pos = vec4(aVertexPos,1.0);
     vec4 vertexPos = uModelViewMatrix * pos;
     vec4 newPos = uProjectionMatrix * uModelViewMatrix * pos;
 
     vec4 normal = normalMatrix * vec4(aVertexNormal,0.0);
-    vec4 light = uModelViewMatrix * vec4(uLightPos,1.0);
+    vec4 light = modelViewMatrixStandard * vec4(uLightPos,1.0);
 
     vColor = vec4(aVertexColor,1.0);
     vNormal = normalize(vec3(normal));

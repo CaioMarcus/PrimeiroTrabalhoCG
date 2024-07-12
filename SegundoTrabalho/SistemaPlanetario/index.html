@@ -89,7 +89,7 @@
     }
 
     class WebGLPlanet extends WebGLSphere{
-        constructor (gl,program,radius,orbitRadius,orbitSpeed,div_u,div_v,color,textureName,filled = false, interpolation = false){
+        constructor (gl,program,radius,orbitRadius,rotationSpeed,div_u,div_v,color,textureName,filled = false, interpolation = false){
           super(gl,program,radius,div_u,div_v,color,textureName,filled = false, interpolation = false);
           this.gl = gl;
           this.program = program;
@@ -97,7 +97,7 @@
           this.filled = filled;
           this.interpolation = interpolation;
           this.orbitRadius = orbitRadius;
-          this.orbitSpeed = orbitSpeed
+          this.rotationSpeed = rotationSpeed;
         }
     }
 
@@ -107,9 +107,9 @@
             super();
             this.program = null;
             this.fov = 60;
-            this.rotationVector = [0.0,0.0,0.0];
+            this.rotationVector = [63.0,10.0,0.0];
             this.lightPos = [0.0,0.0,0.0];
-            this.translationVector = [0.0,0.0,-60.0];
+            this.translationVector = [0.0,0.0,-100.0];
             this.lastTime = 0;
             this.stack = new SimpleGLStack();
         }
@@ -147,10 +147,10 @@
             this.firstPlanet = new WebGLPlanet(this.gl,this.program,3,15,1.0,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/planet_1_texture.jpg");
             this.firstPlanetModel = this.firstPlanet.getWebGLModel();
 
-            this.secondPlanet = new WebGLPlanet(this.gl,this.program,2,30,1.0,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/planet_2_texture.jpg");
+            this.secondPlanet = new WebGLPlanet(this.gl,this.program,2,30,2.0,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/planet_2_texture.jpg");
             this.secondPlanetModel = this.secondPlanet.getWebGLModel();
 
-            this.thirdPlanet = new WebGLPlanet(this.gl,this.program,7,60,1.0,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/planet_2_texture.jpg");
+            this.thirdPlanet = new WebGLPlanet(this.gl,this.program,7,60,0.5,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/planet_2_texture.jpg");
             this.thirdPlanetModel = this.thirdPlanet.getWebGLModel();
 
             this.spaceBackground = new WebGLSpaceBackground(this.gl,this.spaceBackgroundProgram,300,32,32,new Color(1.0,1.0,1.0,1.0),"Textures/milk_way.jpg");
@@ -263,16 +263,17 @@
         //         //             0.0, this.planet.orbitRadius * Math.sin(deltaTime * 0.0005)
         //         //           ); 
         //           mat4.translate(modelViewMatrix,modelViewMatrix,tv);
-        //           this.updateModelViewMatrix(this.fourthPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
-        //           this.fourthPlanetModel.draw(modelViewMatrix);
+        //           this.updateModelViewMatrix(this.thirdPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
+        //           this.thirdPlanetModel.draw(modelViewMatrix);
         //         modelViewMatrix = this.stack.pop();
-            
         // }
 
 
         drawScene(modelViewMatrix, deltaTime){
             var tv = vec3.create();
             let baseOrbitSpeed = 0.1;
+            let baseRotationSpeed = 0.001;
+            let rotationAngle;
 
             // SpaceBakcground
             this.stack.push(mat4.clone(modelViewMatrix));
@@ -294,7 +295,12 @@
                               tv, this.firstPlanet.orbitRadius * Math.cos(deltaTime * baseOrbitSpeed * Math.pow(this.firstPlanet.orbitRadius, 3/2) / 100000), 
                               0.0, this.firstPlanet.orbitRadius * Math.sin(deltaTime * baseOrbitSpeed * Math.pow(this.firstPlanet.orbitRadius, 3/2) / 100000)
                             ); 
+                    
+                    rotationAngle = deltaTime * this.firstPlanet.rotationSpeed * baseRotationSpeed;
+
                     mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+                    mat4.rotate(modelViewMatrix, modelViewMatrix, rotationAngle, [0, 1, 0]);
+                    
                     this.updateModelViewMatrix(this.firstPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
                     this.firstPlanetModel.draw(modelViewMatrix);
                   modelViewMatrix = this.stack.pop();
@@ -305,7 +311,12 @@
                               tv, this.secondPlanet.orbitRadius * Math.cos(deltaTime * baseOrbitSpeed * Math.pow(this.secondPlanet.orbitRadius, 3/2) / 100000), 
                               0.0, this.secondPlanet.orbitRadius * Math.sin(deltaTime * baseOrbitSpeed * Math.pow(this.secondPlanet.orbitRadius, 3/2) / 100000)
                             ); 
+
+                    rotationAngle = deltaTime * this.firstPlanet.rotationSpeed * baseRotationSpeed;
+
                     mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+                    mat4.rotate(modelViewMatrix, modelViewMatrix, rotationAngle, [0, 1, 0]);
+
                     this.updateModelViewMatrix(this.secondPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
                     this.secondPlanetModel.draw(modelViewMatrix);
                   modelViewMatrix = this.stack.pop();
@@ -316,7 +327,12 @@
                               tv, this.thirdPlanet.orbitRadius * Math.cos(deltaTime * baseOrbitSpeed * Math.pow(this.thirdPlanet.orbitRadius, 3/2) / 100000), 
                               0.0, this.thirdPlanet.orbitRadius * Math.sin(deltaTime * baseOrbitSpeed * Math.pow(this.thirdPlanet.orbitRadius, 3/2) / 100000)
                             ); 
+                    
+                    rotationAngle = deltaTime * this.firstPlanet.rotationSpeed * baseRotationSpeed;
+
                     mat4.translate(modelViewMatrix,modelViewMatrix,tv);
+                    mat4.rotate(modelViewMatrix, modelViewMatrix, rotationAngle, [0, 1, 0]);
+
                     this.updateModelViewMatrix(this.thirdPlanetModel.program,modelViewMatrix,"uModelViewMatrix");
                     this.thirdPlanetModel.draw(modelViewMatrix);
                   modelViewMatrix = this.stack.pop();
@@ -399,8 +415,8 @@
                 ...['Translate X', 'Translate Y', 'Translate Z'].reduce((result, name, i) => {
                 result[name] = {
                     value: obj.translationVector[i],
-                    min: -100, 
-                    max: 100, 
+                    min: -300, 
+                    max: 300, 
                     step: 0.000001,
                     onChange(v, state){
                     obj.translationVector[i] = v;
@@ -414,7 +430,7 @@
                 ...['Rotate X', 'Rotate Y', 'Rotate Z'].reduce((result, name, i) => {
                 result[name] = {
                     value: obj.rotationVector[i],
-                    min: -180, max: 180, step: 0.000001,
+                    min: -280, max: 280, step: 0.000001,
                     onChange(v, state) {
                     obj.rotationVector = [
                         state['Rotate X'],
@@ -460,7 +476,7 @@
 
 
         init() {
-            this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            this.gl.clearColor(0.7, 0.7, 0.7, 1.0);
             this.gl.enable(this.gl.DEPTH_TEST);
             super.init();
         }
