@@ -34,8 +34,8 @@ void main(void) {
     vec3 Is; // Iluminação especular
     float Ka = 0.1;
     float Kd = 0.8;
-    float Ks = 2.8;
-    float ns = 18.0;
+    float Ks = 1.2;
+    float ns = 4.0;
 
     // Cálculo da componente ambiental
     Ia = Ka * vec3(1.0, 1.0, 1.0);
